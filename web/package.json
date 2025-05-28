@@ -1,0 +1,15 @@
+{
+  "name": "etl-web-dashboard",
+  "version": "1.0.0",
+  "description": "ETL Dashboard Web Application",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "mysql2": "^2.3.0",
+    "ejs": "^3.1.6",
+    "dotenv": "^10.0.0"
+  }
+} 

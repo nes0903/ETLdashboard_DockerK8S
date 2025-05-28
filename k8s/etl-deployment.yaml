@@ -1,0 +1,119 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: etl-deployment
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: etl
+  template:
+    metadata:
+      labels:
+        app: etl
+    spec:
+      tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "node.kubernetes.io/disk-pressure"
+        operator: "Exists"
+        effect: "NoSchedule"
+      dnsConfig:
+        nameservers:
+          - 10.96.0.10
+          - 8.8.8.8
+          - 8.8.4.4
+        searches:
+          - default.svc.cluster.local
+          - svc.cluster.local
+          - cluster.local
+      containers:
+      - name: etl-container
+        image: nes0903/etl-image:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SOURCE_DB_HOST
+          value: "10.110.126.86"
+        - name: SOURCE_DB_USER
+          value: "root"
+        - name: SOURCE_DB_PASSWORD
+          value: "1234"
+        - name: SOURCE_DB_NAME
+          value: "kopo"
+        - name: TARGET_DB_HOST
+          value: "10.98.128.61"
+        - name: TARGET_DB_USER
+          value: "root"
+        - name: TARGET_DB_PASSWORD
+          value: "1234"
+        - name: TARGET_DB_NAME
+          value: "kopo2"
+        - name: LANG
+          value: "C.utf8"
+        - name: LC_ALL
+          value: "C.utf8"
+        imagePullPolicy: Always
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: etl-service
+  namespace: default
+spec:
+  selector:
+    app: etl
+  ports:
+  - port: 80
+    targetPort: 80
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: etl-network-policy
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: etl
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: web
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: source-db
+    ports:
+    - protocol: TCP
+      port: 3306
+  - to:
+    - podSelector:
+        matchLabels:
+          app: target-db
+    ports:
+    - protocol: TCP
+      port: 3306
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80 

@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: default
+data:
+  default.conf: |
+    server {
+        listen 80;
+        location / {
+            proxy_pass http://localhost:3000;
+        }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deployment
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d
+      - name: nodejs
+        image: nes0903/web-dashboard:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: DB_HOST
+          value: "source-db-service"
+        - name: DB_USER
+          value: "root"
+        - name: DB_PASSWORD
+          value: "1234"
+        - name: DB_NAME
+          value: "kopo"
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: nginx-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+  namespace: default
+spec:
+  selector:
+    app: web
+  ports:
+  - port: 80
+    targetPort: 80
+  type: NodePort 
